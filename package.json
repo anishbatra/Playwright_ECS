@@ -13,7 +13,8 @@
   "description": "",
   "devDependencies": {
     "@playwright/test": "^1.52.0",
-    "@types/node": "^22.15.24"
+  "@types/node": "^22.15.24",
+  "allure-playwright": "^2.15.0"
   },
   "dependencies": {
     "cross-env": "^7.0.3",

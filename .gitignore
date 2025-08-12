@@ -11,10 +11,18 @@ test-results/
 playwright/.cache/
 *.trace.zip
 *.zip
+allure-results/
+allure-report/
 
 # Coverage
 coverage/
 .nyc_output/
+
+# Env & secrets
+env/
+login.json
+.env
+.env.*
 
 # Build outputs
 /dist/
