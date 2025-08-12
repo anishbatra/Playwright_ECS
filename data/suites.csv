@@ -1,0 +1,2 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","1406","login to your account @regression","chromium","Tue Aug 12 19:50:12 UTC 2025","passed","Tue Aug 12 19:50:13 UTC 2025","","selfHealLogin.spec.ts","",""
