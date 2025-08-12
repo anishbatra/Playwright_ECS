@@ -6,11 +6,16 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   run-tests-and-send-email:
     timeout-minutes: 120
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
@@ -75,6 +80,16 @@ jobs:
         run: npm run e2e:regression:stage
         continue-on-error: true
 
+      - name: Debug workspace and results
+        if: always()
+        run: |
+          pwd
+          ls -la
+          echo "--- allure-results ---"
+          ls -la allure-results || true
+          echo "--- playwright-report ---"
+          ls -la playwright-report || true
+
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
@@ -99,24 +114,47 @@ jobs:
 
       - name: Generate Allure Report
         if: always()
+        continue-on-error: true
         run: |
           npm install -g allure-commandline
-          rm -rf allure-results/history
-          allure generate allure-results --clean -o allure-report
+          if [ -d "allure-results" ] && [ "$(ls -A allure-results 2>/dev/null)" ]; then
+            rm -rf allure-results/history || true
+            allure generate allure-results --clean -o allure-report
+          else
+            echo "No allure-results found; skipping Allure report generation."
+          fi
 
       - name: Clean up Allure results before deployment
         if: always()
         run: |
           find ./allure-report -type f -size +100M -exec rm -f {} \;
 
-      - name: Deploy Allure Report to GitHub Pages
+      - name: Select site directory for Pages
+        id: site
         if: always()
-        uses: peaceiris/actions-gh-pages@v4
+        run: |
+          if [ -f "allure-report/index.html" ]; then
+            echo "dir=allure-report" >> "$GITHUB_OUTPUT"
+          elif [ -f "playwright-report/index.html" ]; then
+            echo "dir=playwright-report" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Pages
+        if: always() && steps.site.outputs.dir != ''
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: always() && steps.site.outputs.dir != ''
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./allure-report
-          keep_files: false
-          force_orphan: true
+          path: ${{ steps.site.outputs.dir }}
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        if: always() && steps.site.outputs.dir != ''
+        uses: actions/deploy-pages@v4
 
       - name: Send Email
         if: always()
@@ -131,7 +169,8 @@ jobs:
             Hi,
             Please find below the link for Playwright Automation Report
 
-            https://anishbatra.github.io/Playwright_ECS/
+            Deployed URL (if available): ${{ steps.deploy.outputs.page_url }}
+            Project Pages URL: https://anishbatra.github.io/Playwright_ECS/
 
             Best Regards
             Anish
