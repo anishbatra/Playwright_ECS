@@ -6,8 +6,6 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Playwright outputs
-playwright-report/
-test-results/
 playwright/.cache/
 *.trace.zip
 *.zip
