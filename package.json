@@ -1,0 +1,24 @@
+{
+  "name": "playwright_ai",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "e2e:regression:dev": "cross-env TARGET_ENV=dev npx playwright test --grep='regression'",
+    "e2e:regression:stage": "cross-env TARGET_ENV=stage npx playwright test --grep='regression'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.15.24"
+  },
+  "dependencies": {
+    "cross-env": "^7.0.3",
+    "dotenv": "^17.2.0",
+    "jsdom": "^26.1.0",
+    "openai": "^5.10.2"
+  }
+}

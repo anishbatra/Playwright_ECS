@@ -1,0 +1,110 @@
+name: Playwright Tests
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  run-tests-and-send-email:
+    timeout-minutes: 120
+    runs-on: [self-hosted, linux, X64, soa-generic]
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - name: Update .env.dev and .env.stage with Secrets
+        run: |
+            # Define file paths
+            ENV_FILES=("env/.env.dev" "env/.env.stage")
+        
+            # Loop through each .env file and update
+            for ENV_FILE in "${ENV_FILES[@]}"; do
+              echo "Updating $ENV_FILE"
+        
+              # Ensure the file ends with a newline before appending
+              if [ -s "$ENV_FILE" ] && [ "$(tail -c 1 "$ENV_FILE")" != "" ]; then
+                echo >> "$ENV_FILE"
+              fi
+        
+              # Log secret write without printing secrets directly for security
+              echo "Writing TEST_USER to $ENV_FILE"
+              echo "Writing PASSWORD to $ENV_FILE"
+        
+              # Update or add TEST_USER
+              if grep -q "^TEST_USER=" "$ENV_FILE"; then
+                sed -i "s/^TEST_USER=.*/TEST_USER=${{ secrets.TEST_USER }}/" "$ENV_FILE"
+              else
+                echo "TEST_USER=${{ secrets.TEST_USER }}" >> "$ENV_FILE"
+              fi
+        
+              # Update or add PASSWORD
+              if grep -q "^PASSWORD=" "$ENV_FILE"; then
+                sed -i "s/^PASSWORD=.*/PASSWORD=${{ secrets.PASSWORD }}/" "$ENV_FILE"
+              else
+                echo "PASSWORD=${{ secrets.PASSWORD }}" >> "$ENV_FILE"
+              fi
+        
+              echo "$ENV_FILE updated successfully"
+            done
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Run Playwright tests in staging environment
+        run: |
+            npm run e2e:regression:stage
+        continue-on-error: true
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Generate Allure Report
+        if: always()
+        run: |
+             npm install -g allure-commandline
+             rm -rf allure-results/history  # Removes old results
+             allure generate allure-results --clean -o allure-report
+      - name: Clean up Allure results before deployment
+        run: |
+                  find ./allure-report -type f -size +100M -exec rm -f {} \;  # Remove large files over 100MB
+      # 6. Deploy Allure Report to GitHub Pages
+      - name: Deploy Allure Report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
+          keep_files: false # Prevents large history accumulation
+          force_orphan: true  # Ensures a clean commit without history
+      # - uses: actions/upload-artifact@v4
+      #   if: always()
+      #   with:
+      #     name: playwright-report
+      #     path: playwright-report/
+      #     retention-days: 1
+      # - name: Download Playwright report
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: playwright-report
+      #     path: playwright-report/
+      - name: Send Email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.AUTOMATION_EMAIL_USERNAME }}
+          password: ${{ secrets.AUTOMATION_EMAIL_PASSWORD }}
+          subject: Fusion 3.0 Dashboard Test Automation Report
+          body: |
+              Hi, 
+              Please find below the link for Fusion 3.0 Dashboard Test Automation Report
+
+              https://anishbatra.github.io/Playwright_ECS/
+
+              Best Regards
+                Anish
+          to:  ${{ secrets.RECEPIENT_EMAIL }}
+          from: ${{ secrets.AUTOMATION_EMAIL_USERNAME }}
