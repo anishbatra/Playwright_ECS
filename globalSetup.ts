@@ -15,7 +15,7 @@ async function globalSetup() {
     override: true,
   });
   console.log("username is ", process.env.TEST_USER);
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
   const page = await context.newPage();
   console.log("url is", process.env.BASE_URL);
